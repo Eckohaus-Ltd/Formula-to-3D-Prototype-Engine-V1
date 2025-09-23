@@ -1,11 +1,11 @@
 import pandas as pd
-import plotly.express as px
 import requests
 import json
 from io import StringIO
 import argparse
-import compute  # assumes compute.py defines generate_formula_data()
 import os
+import compute  # assumes compute.py defines generate_formula_data()
+import plotly.express as px
 
 # URL of the IERS CSV
 CSV_URL = "https://datacenter.iers.org/data/csv/bulletina.longtime.csv"
@@ -41,77 +41,56 @@ def extract_3d_points(df):
     ]
     return points
 
-def pre_render_charts(iers_points, formula_points, output_path):
-    """Optional: Render 3D charts to static images using Plotly."""
-    try:
-        # Create output folder for images
-        img_dir = os.path.join(os.path.dirname(output_path), "images")
-        os.makedirs(img_dir, exist_ok=True)
+def render_3d_chart(points, output_path, title="3D Scatter"):
+    """Render a 3D scatter plot and save as PNG using Plotly + Kaleido."""
+    if not points:
+        print(f"No points to render for {title}")
+        return
 
-        # Convert lists of points to DataFrames
-        iers_df = pd.DataFrame(iers_points)
-        formula_df = pd.DataFrame(formula_points)
+    df = pd.DataFrame(points)
+    fig = px.scatter_3d(df, x='x', y='y', z='z', color='z', title=title, opacity=0.8)
+    fig.write_image(output_path)
+    print(f"Pre-rendered chart saved to {output_path}")
 
-        if not iers_df.empty:
-            fig = px.scatter_3d(iers_df, x="x", y="y", z="z",
-                                color="z", color_continuous_scale="Viridis",
-                                title="IERS Earth Orientation Parameters")
-            fig.write_image(os.path.join(img_dir, "iers_plot.png"))
-            print(f"IERS plot saved to {img_dir}/iers_plot.png")
+def main(output_json, images_dir):
+    # Ensure output directories exist
+    os.makedirs(os.path.dirname(output_json), exist_ok=True)
+    os.makedirs(images_dir, exist_ok=True)
 
-        if not formula_df.empty:
-            fig = px.scatter_3d(formula_df, x="x", y="y", z="z",
-                                color="z", color_continuous_scale="Plasma",
-                                title="Formula Volumetric Data")
-            fig.write_image(os.path.join(img_dir, "formula_plot.png"))
-            print(f"Formula plot saved to {img_dir}/formula_plot.png")
-
-    except ImportError:
-        print("Plotly or Kaleido not installed. Skipping pre-rendering.")
-    except Exception as e:
-        print(f"Error pre-rendering charts: {e}")
-
-def main(output_path):
-    # Ensure output directory exists
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-
-    # Step 1: Fetch and parse CSV
+    # Step 1: Fetch IERS CSV
     df = fetch_and_parse_csv(CSV_URL)
-
-    # Step 2: Extract 3D points
     iers_points = extract_3d_points(df)
 
-    # Step 3: Generate formula points using compute.py
+    # Step 2: Generate formula points
     try:
         formula_points = compute.generate_formula_data()
     except Exception as e:
         print(f"Error generating formula points: {e}")
         formula_points = []
 
-    # Step 4: Combine into JSON
-    volumetric_data = {
-        "iers": iers_points,
-        "formula": formula_points
-    }
+    # Step 3: Save JSON
+    volumetric_data = {"iers": iers_points, "formula": formula_points}
+    with open(output_json, "w") as f:
+        json.dump(volumetric_data, f, indent=2)
+    print(f"volumetric_data.json updated: {len(iers_points)} IERS points, {len(formula_points)} formula points.")
 
-    # Step 5: Save JSON
-    try:
-        with open(output_path, "w") as f:
-            json.dump(volumetric_data, f, indent=2)
-        print(f"volumetric_data.json updated: {len(iers_points)} IERS points, {len(formula_points)} formula points.")
-    except Exception as e:
-        print(f"Error writing JSON file: {e}")
-
-    # Step 6: Optional pre-render charts
-    pre_render_charts(iers_points, formula_points, output_path)
+    # Step 4: Pre-render charts
+    render_3d_chart(iers_points, os.path.join(images_dir, "iers.png"), title="IERS Dataset")
+    render_3d_chart(formula_points, os.path.join(images_dir, "formula.png"), title="Formula Dataset")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Fetch IERS data and output volumetric JSON.")
+    parser = argparse.ArgumentParser(description="Fetch IERS data and output volumetric JSON + charts.")
     parser.add_argument(
-        "--output",
+        "--output_json",
         type=str,
         default="gh-pages/docs/volumetric_data.json",
         help="Path to output JSON file"
     )
+    parser.add_argument(
+        "--images_dir",
+        type=str,
+        default="gh-pages/docs/images",
+        help="Directory to store pre-rendered chart images"
+    )
     args = parser.parse_args()
-    main(args.output)
+    main(args.output_json, args.images_dir)
