@@ -54,5 +54,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Update volumetric_data.json + pre-rendered charts from IERS"
+            git commit -m "Update volumetric_data.json and pre-rendered charts from IERS"
             git push https://x-access-token:${{ secrets.PAT_TOKEN_V1 }}@github.com/Eckohaus/Formula-to-3D-Prototype-Engine-V1.git gh-pages
+          fi
