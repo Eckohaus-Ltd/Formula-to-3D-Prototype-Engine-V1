@@ -56,5 +56,5 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "Update volumetric_data.json from IERS"
-            git push https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/Eckohaus/Formula-to-3D-Prototype-Engine.git gh-pages
+            git push https://x-access-token:${{ secrets.PAT_TOKEN_V1 }}@github.com/Eckohaus/Formula-to-3D-Prototype-Engine.git gh-pages
           fi
