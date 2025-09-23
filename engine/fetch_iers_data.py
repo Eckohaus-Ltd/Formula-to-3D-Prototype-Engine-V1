@@ -1,9 +1,10 @@
 import pandas as pd
+import plotly.express as px
 import requests
 import json
 from io import StringIO
 import argparse
-import compute  # assumes compute.py defines a function generate_formula_data()
+import compute  # assumes compute.py defines generate_formula_data()
 import os
 
 # URL of the IERS CSV
@@ -40,10 +41,39 @@ def extract_3d_points(df):
     ]
     return points
 
+def pre_render_charts(iers_points, formula_points, output_path):
+    """Optional: Render 3D charts to static images using Plotly."""
+    try:
+        # Create output folder for images
+        img_dir = os.path.join(os.path.dirname(output_path), "images")
+        os.makedirs(img_dir, exist_ok=True)
+
+        # Convert lists of points to DataFrames
+        iers_df = pd.DataFrame(iers_points)
+        formula_df = pd.DataFrame(formula_points)
+
+        if not iers_df.empty:
+            fig = px.scatter_3d(iers_df, x="x", y="y", z="z",
+                                color="z", color_continuous_scale="Viridis",
+                                title="IERS Earth Orientation Parameters")
+            fig.write_image(os.path.join(img_dir, "iers_plot.png"))
+            print(f"IERS plot saved to {img_dir}/iers_plot.png")
+
+        if not formula_df.empty:
+            fig = px.scatter_3d(formula_df, x="x", y="y", z="z",
+                                color="z", color_continuous_scale="Plasma",
+                                title="Formula Volumetric Data")
+            fig.write_image(os.path.join(img_dir, "formula_plot.png"))
+            print(f"Formula plot saved to {img_dir}/formula_plot.png")
+
+    except ImportError:
+        print("Plotly or Kaleido not installed. Skipping pre-rendering.")
+    except Exception as e:
+        print(f"Error pre-rendering charts: {e}")
+
 def main(output_path):
     # Ensure output directory exists
-    output_dir = os.path.dirname(output_path)
-    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     # Step 1: Fetch and parse CSV
     df = fetch_and_parse_csv(CSV_URL)
@@ -68,16 +98,12 @@ def main(output_path):
     try:
         with open(output_path, "w") as f:
             json.dump(volumetric_data, f, indent=2)
-
-        print(f"volumetric_data.json updated: {len(volumetric_data['iers'])} IERS points, {len(volumetric_data['formula'])} formula points.")
-
-        # --- Debug snippet ---
-        print(f"JSON file written to {output_path}")
-        print(json.dumps(volumetric_data, indent=2)[:1000])  # prints first 1000 characters
-        # ---------------------
-
+        print(f"volumetric_data.json updated: {len(iers_points)} IERS points, {len(formula_points)} formula points.")
     except Exception as e:
         print(f"Error writing JSON file: {e}")
+
+    # Step 6: Optional pre-render charts
+    pre_render_charts(iers_points, formula_points, output_path)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Fetch IERS data and output volumetric JSON.")
