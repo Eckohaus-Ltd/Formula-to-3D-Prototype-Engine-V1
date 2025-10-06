@@ -1,11 +1,10 @@
 # This workflow updates volumetric_data.json daily; replaces fetch_iers.yml
-name: Update Volumetric Data
+name: Update Volumetric Data (Private V1)
 
 on:
   schedule:
     - cron: '0 2 * * *'  # daily at 02:00 UTC
   workflow_dispatch:
-    inputs: {}  # optional inputs can be defined here
 
 jobs:
   update-data:
@@ -48,13 +47,26 @@ jobs:
       # Step 6: Commit & push changes
       - name: Commit & push changes
         working-directory: gh-pages
+        shell: bash
         run: |
           git config --local user.email "github-actions@github.com"
           git config --local user.name "GitHub Actions"
+
+          # Update timestamp in existing JSON
+          python -c "import json, datetime, pathlib; \
+          p=pathlib.Path('docs/volumetric_data.json'); \
+          data=json.loads(p.read_text()); \
+          data['last_test_run']=datetime.datetime.utcnow().isoformat()+'Z'; \
+          p.write_text(json.dumps(data, indent=2))"
+
           git add docs/volumetric_data.json docs/images/
           if git diff --cached --quiet; then
-            echo "No changes to commit"
+            echo 'No changes to commit'
           else
-            git commit -m "Update volumetric_data.json and pre-rendered charts from IERS"
+            git commit -m 'Update volumetric_data.json and pre-rendered charts from IERS' \
+              -m 'ci: validated daily data update and chart regeneration for Formula-to-3D-Prototype-Engine-V1 (private).' \
+              -m 'This commit ensures compatibility with fine-grained PAT_TOKEN_V1 and full alignment with the public Formula3D baseline.' \
+              -m 'Co-authored-by: Corvin Dhali <info@eckohaus.blog>' \
+              -m 'Co-authored-by: GPT-5 <assistant@openai.com>'
             git push https://x-access-token:${{ secrets.PAT_TOKEN_V1 }}@github.com/Eckohaus/Formula-to-3D-Prototype-Engine-V1.git gh-pages
           fi
