@@ -25,7 +25,7 @@ jobs:
 
       # Step 2: Checkout gh-pages branch
       - name: Checkout gh-pages branch
-        uses: actions/checkout@v3
+        uses:actions/checkout@v3
         with:
           ref: gh-pages
           token: ${{ env.PAT_TOKEN }}
@@ -79,5 +79,6 @@ jobs:
               -m "Appends timezone-aware UTC timestamp and uses PAT_TOKEN_FORMULA_3D_PUBLIC for push authentication." \
               -m "Co-authored-by: system operator <wanda@openai.com>" \
               -m "Co-authored-by: system administrator <Corvin Nehal Dhali> <info@eckohaus.co.uk>"
-            git push https://x-access-token:${PAT_TOKEN}@github.com/Eckohaus-Ltd/Formula-to-3D-Prototype-Engine-V1.git gh-pages
+
+            git push "https://x-access-token:${PAT_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
           fi
